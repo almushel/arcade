@@ -34,6 +34,7 @@ int main(void) {
 
 	float dt = 0;
 	float update_timer = UPDATE_RATE;
+	bool game_over = false;
 
 	while(!WindowShouldClose()) {
 		dt = GetFrameTime();
@@ -52,8 +53,9 @@ int main(void) {
 		BeginDrawing();
 		ClearBackground(DARKGRAY);
 
+		int head = snake.cells[snake.len-1];
 		for (int i = 0; i < snake.len; i++) {
-			if (i == snake.len-1) {
+			if (!game_over && i == snake.len-1) {
 				if ((snake.dir.x||snake.dir.y) && update_timer <= 0) {
 					int x = snake.cells[snake.len-1] % map_w;
 					int y = (snake.cells[snake.len-1] - x) / map_w;
@@ -88,8 +90,12 @@ int main(void) {
 						snake.cells[snake.len-1] = new_index;
 					}
 				}
-			} else if (update_timer <= 0) {
-				snake.cells[i] = snake.cells[i+1];
+			} else if (!game_over && update_timer <= 0) {
+				if (head == snake.cells[i]) {
+					game_over = true;
+				} else {
+					snake.cells[i] = snake.cells[i+1];
+				}
 			}
 
 			// Draw
@@ -104,6 +110,19 @@ int main(void) {
 		DrawCircle((x*cell_size)+cell_size/2.0f, (y*cell_size)+cell_size/2.0f, cell_size/3.0f, GREEN);
 
 		update_timer += (float)(update_timer <= 0) * UPDATE_RATE;
+
+		if (game_over) {
+			const char* go_text = "GAME OVER";
+
+			int font_size = GetScreenHeight()/8;
+			int width;
+			while((width = MeasureText(go_text, font_size)) >= GetScreenWidth()) {
+				font_size /= 2;
+			}
+
+			DrawText(go_text, GetScreenWidth()/2 - width/2, GetScreenHeight()/2 - font_size/2, font_size, RED);
+		}
+
 		EndDrawing();
 	}
 }
