@@ -1,7 +1,7 @@
 #include "raylib.h"
 
-#define cell_size 16
-#define UPDATE_RATE 0.25f/2
+#define CELL_SIZE 16
+#define UPDATE_INTERVAL 0.25f
 
 typedef struct iVector2 {
 	int x, y;
@@ -9,7 +9,7 @@ typedef struct iVector2 {
 
 struct snake {
 	int len, cap;
-	int * cells;
+	int * segments;
 	iVector2 dir;
 };
 
@@ -18,98 +18,99 @@ int main(void) {
 	const int map_h = 24;
 	const int map_len = map_w*map_h;
 
-	InitWindow(map_w*cell_size, map_h*cell_size,"snaek");
+	InitWindow(map_w*CELL_SIZE, map_h*CELL_SIZE,"snaek");
 	SetTargetFPS(60);
 
 	struct snake snake = {
 		.cap = map_len,
-		.cells = MemAlloc(sizeof(int) * map_len),
+		.segments = MemAlloc(sizeof(int) * map_len),
 		.len = 1
 	};
-	snake.cells[0] = GetRandomValue(0, map_len-1);
-	int food = snake.cells[0];
-	while (food == snake.cells[0]) {
+	snake.segments[0] = GetRandomValue(0, map_len-1);
+	int food = snake.segments[0];
+	while (food == snake.segments[0]) {
 		food = GetRandomValue(0, map_len-1);
 	}
 
-	float dt = 0;
-	float update_timer = UPDATE_RATE;
 	bool game_over = false;
+	float update_timer = 0;
+	iVector2 next_dir = {0};
 
 	while(!WindowShouldClose()) {
-		dt = GetFrameTime();
+		float dt = GetFrameTime();
 		update_timer -= dt * (float)(update_timer > 0);
 
-		iVector2 new_dir = {
-			.x = (int)IsKeyDown(KEY_D) - (int)IsKeyDown(KEY_A),
-			.y = (int)IsKeyDown(KEY_S) - (int)IsKeyDown(KEY_W),
-		};
-		// Enforce 4 directions prioritizing horizontal axis
-		new_dir.y *= (int)(new_dir.x == 0);
-		if ( (new_dir.x && !snake.dir.x) || (new_dir.y && !snake.dir.y) ) {
-			snake.dir = new_dir;
-		}
+		if (IsKeyDown(KEY_W)) next_dir.y = -1;
+		if (IsKeyDown(KEY_A)) next_dir.x = -1;
+		if (IsKeyDown(KEY_S)) next_dir.y =  1;
+		if (IsKeyDown(KEY_D)) next_dir.x =  1;
 
 		BeginDrawing();
 		ClearBackground(DARKGRAY);
 
-		int head = snake.cells[snake.len-1];
-		for (int i = 0; i < snake.len; i++) {
-			if (!game_over && i == snake.len-1) {
-				if ((snake.dir.x||snake.dir.y) && update_timer <= 0) {
-					int x = snake.cells[snake.len-1] % map_w;
-					int y = (snake.cells[snake.len-1] - x) / map_w;
-
-					x += snake.dir.x;
-					y += snake.dir.y;
-					
-					// Screen wrap
-					x = (x + (int)(x < 0)*map_w) % map_w;
-					y = (y + (int)(y < 0)*map_h) % map_h;
-					int new_index = (y * map_w) + x;
-
-					if (new_index == food) {
-						snake.cells[snake.len++] = new_index;
-						i++; // Avoid moving newly grown snake segment
-						
-						food = GetRandomValue(0, map_len);
-						while (true) {
-							bool valid = true;
-							for (int j=0; j<snake.len;j++) {
-								if (snake.cells[j] == food) {
-									valid = false;
-									break;
-								}
-							}
-							
-							if (valid) {
-								break;
-							}
-						}
-					} else {
-						snake.cells[snake.len-1] = new_index;
-					}
-				}
-			} else if (!game_over && update_timer <= 0) {
-				if (head == snake.cells[i]) {
+		int x, y;
+		for (int i = 0; i < snake.len-1; i++) {
+			if (!game_over && update_timer <= 0) {
+				if (snake.segments[snake.len-1] == snake.segments[i]) {
 					game_over = true;
 				} else {
-					snake.cells[i] = snake.cells[i+1];
+					snake.segments[i] = snake.segments[i+1];
 				}
 			}
 
-			// Draw
-			int x = snake.cells[i] % map_w;
-			int y = (snake.cells[i] - x) / map_w;
-			DrawRectangle(x*cell_size, y*cell_size, cell_size, cell_size, GRAY);
-			DrawRectangleLines(x*cell_size, y*cell_size, cell_size, cell_size, WHITE);
+			x = snake.segments[i] % map_w;
+			y = (snake.segments[i] - x) / map_w;
+			DrawRectangle(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, GRAY);
+			DrawRectangleLines(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, WHITE);
 		}
 
-		int x = food % map_w;
-		int y = (food - x) / map_w;
-		DrawCircle((x*cell_size)+cell_size/2.0f, (y*cell_size)+cell_size/2.0f, cell_size/3.0f, GREEN);
+		x = snake.segments[snake.len-1] % map_w;
+		y = (snake.segments[snake.len-1] - x) / map_w;
+		if (!game_over && update_timer <= 0) {
+			next_dir.y *= (int)(next_dir.x == 0);
+			if ( (next_dir.x && !snake.dir.x) || (next_dir.y && !snake.dir.y) ) {
+				snake.dir = next_dir;
+			}
+			next_dir = (iVector2){0};
 
-		update_timer += (float)(update_timer <= 0) * UPDATE_RATE;
+			if ((snake.dir.x||snake.dir.y)) {
+				x += snake.dir.x;
+				y += snake.dir.y;
+				
+				// Screen wrap
+				x = (x + (int)(x < 0)*map_w) % map_w;
+				y = (y + (int)(y < 0)*map_h) % map_h;
+				int new_index = (y * map_w) + x;
+
+				if (new_index == food) {
+					snake.segments[snake.len++] = new_index;
+					
+					bool valid = false;
+					while (!valid) {
+						food = GetRandomValue(0, map_len);
+						valid = true;
+
+						for (int j=0; j<snake.len;j++) {
+							if (snake.segments[j] == food) {
+								valid = false;
+								break;
+							}
+						}
+					}
+				} else {
+					snake.segments[snake.len-1] = new_index;
+				}
+			}
+		}
+		// Draw head of snake
+		DrawRectangle(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, game_over ? RED : GRAY);
+		DrawRectangleLines(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, WHITE);
+
+		x = food % map_w;
+		y = (food - x) / map_w;
+		DrawCircle((x*CELL_SIZE)+CELL_SIZE/2.0f, (y*CELL_SIZE)+CELL_SIZE/2.0f, CELL_SIZE/3.0f, GREEN);
+
+		update_timer += (float)(update_timer <= 0) * UPDATE_INTERVAL;
 
 		if (game_over) {
 			const char* go_text = "GAME OVER";
