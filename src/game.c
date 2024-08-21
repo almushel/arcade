@@ -41,18 +41,23 @@ int main(void) {
 	iVector2 next_dir = {0};
 
 	while(!WindowShouldClose()) {
-		float dt = GetFrameTime();
-		update_timer -= dt * (float)(update_timer > 0);
+		update_timer -= GetFrameTime() * (float)(update_timer > 0);
 
-		if (IsKeyDown(KEY_W)) next_dir.y = -1;
-		if (IsKeyDown(KEY_A)) next_dir.x = -1;
-		if (IsKeyDown(KEY_S)) next_dir.y =  1;
-		if (IsKeyDown(KEY_D)) next_dir.x =  1;
+		if (IsKeyDown(KEY_W)) next_dir = (iVector2){ 0,-1};
+		if (IsKeyDown(KEY_A)) next_dir = (iVector2){-1, 0};
+		if (IsKeyDown(KEY_S)) next_dir = (iVector2){ 0, 1};
+		if (IsKeyDown(KEY_D)) next_dir = (iVector2){ 1, 0};
 
 		if (!game_over && update_timer <= 0) {
-			next_dir.y *= (int)(next_dir.x == 0);
-			if ( (next_dir.x && !snake.dir.x) || (next_dir.y && !snake.dir.y) ) {
-				snake.dir = next_dir;
+			if (next_dir.x || next_dir.y) {
+				int new_dir_index = 
+					snake.segments[snake.len-1]
+					+ next_dir.x
+					+ (next_dir.y * map_w);
+
+				if (new_dir_index != snake.segments[snake.len-2]) {
+					snake.dir = next_dir;
+				}
 			}
 			next_dir = (iVector2){0};
 
