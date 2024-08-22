@@ -1,7 +1,8 @@
 #include "raylib.h"
 
 #define CELL_SIZE 16
-#define UPDATE_INTERVAL 0.25f
+#define UPDATE_INTERVAL 0.125f
+#define INTERP 0
 
 typedef struct iVector2 {
 	int x, y;
@@ -91,20 +92,48 @@ int main(void) {
 				}
 
 			}
-			update_timer = UPDATE_INTERVAL;
+
+			update_timer = UPDATE_INTERVAL * (float)(!game_over);
 		}
 
 		BeginDrawing();
 		ClearBackground(DARKGRAY);
-		int x, y;
+
+#if INTERP
+		float t = 0.5f-(update_timer/UPDATE_INTERVAL);
+		t *= (float)(snake.dir.x || snake.dir.y);
+		int x = snake.segments[0] % map_w;
+		int y = (snake.segments[0] - x) / map_w;
+		int next_x = x, next_y = y;
 		for (int i = 0; i < snake.len; i++) {
+			if (i < snake.len-1) {
+				next_x = snake.segments[i+1] % map_w;
+				next_y = (snake.segments[i+1] - next_x) / map_w;
+			} else {
+				next_x = x + snake.dir.x;
+				next_y = y + snake.dir.y;
+			}
+			float fx = (float)x + t*(float)(next_x-x);
+			float fy = (float)y + t*(float)(next_y-y);
+			
+			Color fill_color = (game_over && i == snake.len-1) ? RED : GRAY;
+			DrawRectangle(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE, fill_color);
+			DrawRectangleLines(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE, WHITE);
+
+			x = next_x;
+			y = next_y;
+		}
+#else
+		int x,y;
+		for (int i = 0; i < snake.len; i++) {
+			Color fill_color = (game_over && i == snake.len-1) ? RED : GRAY;
 			x = snake.segments[i] % map_w;
 			y = (snake.segments[i] - x) / map_w;
-			Color fill_color = (game_over && i == snake.len-1) ? RED : GRAY;
 
 			DrawRectangle(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, fill_color);
 			DrawRectangleLines(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, WHITE);
 		}
+#endif
 
 		x = food % map_w;
 		y = (food - x) / map_w;
