@@ -1,6 +1,6 @@
 #include "raylib.h"
 
-#define CELL_SIZE 16
+#define CELL_SIZE 32
 #define UPDATE_INTERVAL 0.125f
 #define INTERP 0
 
@@ -15,8 +15,8 @@ struct snake {
 };
 
 int main(void) {
-	const int map_w = 24;
-	const int map_h = 24;
+	const int map_w = 12;
+	const int map_h = 12;
 	const int map_len = map_w*map_h;
 
 	InitWindow(map_w*CELL_SIZE, map_h*CELL_SIZE,"snaek");
@@ -59,8 +59,8 @@ int main(void) {
 				if (new_dir_index != snake.segments[snake.len-2]) {
 					snake.dir = next_dir;
 				}
+				next_dir = (iVector2){0};
 			}
-			next_dir = (iVector2){0};
 
 			if (snake.dir.x || snake.dir.y) {
 				int x = snake.segments[snake.len-1] % map_w;
@@ -68,12 +68,13 @@ int main(void) {
 				// Move
 				x += snake.dir.x;
 				y += snake.dir.y;
-				// Screen wrap
-				x = (x + (int)(x < 0)*map_w) % map_w;
-				y = (y + (int)(y < 0)*map_h) % map_h;
 
 				int new_index = (y * map_w) + x;
-				if (map[new_index] == 1) {
+				bool collision = 
+					map[new_index] == 1 ||
+					!CheckCollisionPointRec((Vector2){x,y}, (Rectangle){0,0, map_w, map_h});
+
+				if (collision) {
 					game_over = true;
 				} else if (map[new_index] == 2) {
 					snake.segments[snake.len++] = new_index;
@@ -115,8 +116,13 @@ int main(void) {
 			}
 			float fx = (float)x + t*(float)(next_x-x);
 			float fy = (float)y + t*(float)(next_y-y);
-			
-			Color fill_color = (game_over && i == snake.len-1) ? RED : GRAY;
+			Color fill_color = 
+				(i == snake.len-1) 
+				? (game_over)
+					? RED
+					: YELLOW
+				: GRAY;
+
 			DrawRectangle(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE, fill_color);
 			DrawRectangleLines(fx*CELL_SIZE, fy*CELL_SIZE, CELL_SIZE, CELL_SIZE, WHITE);
 
@@ -126,15 +132,19 @@ int main(void) {
 #else
 		int x,y;
 		for (int i = 0; i < snake.len; i++) {
-			Color fill_color = (game_over && i == snake.len-1) ? RED : GRAY;
 			x = snake.segments[i] % map_w;
 			y = (snake.segments[i] - x) / map_w;
+			Color fill_color = 
+				(i == snake.len-1) 
+				? (game_over)
+					? RED
+					: YELLOW
+				: GRAY;
 
 			DrawRectangle(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, fill_color);
 			DrawRectangleLines(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE, WHITE);
 		}
 #endif
-
 		x = food % map_w;
 		y = (food - x) / map_w;
 		DrawCircle((x*CELL_SIZE)+CELL_SIZE/2.0f, (y*CELL_SIZE)+CELL_SIZE/2.0f, CELL_SIZE/3.0f, GREEN);
