@@ -10,7 +10,6 @@
 #define MAP_COLOR DARKGRAY
 #define OUTLINE_COLOR WHITE
 
-
 #define zero_array(arr, len) for (int i = 0; i < len; i++) {arr[i] = 0;}
 
 typedef struct iVector2 {
